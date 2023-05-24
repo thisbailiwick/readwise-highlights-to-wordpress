@@ -119,6 +119,8 @@ function processAnyHighlights($results, $new_name_sets_processed): void
                 </p>
 HTML;
             $content = wp_kses_post($content);
+            
+            $image = $book['cover_image_url'];
 
 
             // Create post object
@@ -128,7 +130,8 @@ HTML;
                 'post_status' => $post_status,
                 'post_author' => 1,
                 'tags_input' => $tags,
-                'post_format' => 'standard'
+                'post_format' => 'standard',
+                'post_thumbnail' => $image
             );
 
             // Insert the post into the database
