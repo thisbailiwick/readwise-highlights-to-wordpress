@@ -150,7 +150,7 @@ HTML;
  * @param WP_Error|array $response
  * @return false
  */
-function checkForErrors(WP_Error|array $response): bool
+function checkForErrors($response)
 {
     if (is_wp_error($response)) {
         error_log('Error fetching Readwise highlights: ' . $response->get_error_message());
@@ -164,7 +164,7 @@ function checkForErrors(WP_Error|array $response): bool
  * @param bool|string $page_cursor
  * @return array|bool|WP_Error
  */
-function fetchNewReadwise(bool|string $page_cursor = false): array|bool|WP_Error
+function fetchNewReadwise($page_cursor = false)
 {
     $page_cursor = $page_cursor !== false ? '&pageCursor=' . $page_cursor : '';
     $time_last_checked = $_POST['fetchAll'] === 'true' ? '1970-01-01T00:00:00Z' : get_option('rwhtwp_time_last_checked', '1970-01-01T00:00:00Z');
