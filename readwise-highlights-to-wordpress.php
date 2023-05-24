@@ -5,6 +5,8 @@ Description: This plugin fetches Readwise highlights and creates a new WordPress
 Version: 1.0
 */
 
+//todo: add template for posts using tag readwise, add readwise class to wrapping div
+
 // If this file is called directly, abort.
 if (!defined('WPINC')) {
     die;
@@ -68,8 +70,9 @@ function processAnyHighlights($results, $new_name_sets_processed): void
 {
     $user_added_tags = trim(get_option('rwhtwp_user_added_tags'));
     $user_added_tags = $user_added_tags !== '' ? explode(',', $user_added_tags) : [];
-    $user_removed_tags = trim(get_option('rwhtwp_user_removed_tags'));
+    $user_removed_tags = get_option('rwhtwp_user_removed_tags');
     $user_removed_tags = $user_removed_tags !== '' ? explode(',', $user_removed_tags) : [];
+    $user_added_tags = array_map('trim', $user_added_tags);
 
     foreach ($results as $book) {
         $book['author'] = possiblyReplaceName($book['author'], $new_name_sets_processed);
@@ -111,19 +114,15 @@ function processAnyHighlights($results, $new_name_sets_processed): void
             $page = !empty($highlight['location']) && $book['category'] === 'books' ? 'page ' . wp_strip_all_tags($highlight['location']) : '';
 
             $content = <<<HTML
-                <p>
-                    "{$highlight['text']}"
+                    <p>"{$highlight['text']}"</p>
                     <br />
                     <p><a href="{$url}"><em><b>{$book['title']}</b></em></a> {$page}
                     —{$book['author']}</p>
-                </p>
 HTML;
             $content = wp_kses_post($content);
-            
+
             $image = $book['cover_image_url'];
 
-
-            // Create post object
             $new_post = array(
                 'post_title' => wp_strip_all_tags($book['title']),
                 'post_content' => $content,
@@ -134,20 +133,59 @@ HTML;
                 'post_thumbnail' => $image
             );
 
-            // Insert the post into the database
             $post_id = wp_insert_post($new_post);
 
-            if ($post_id !== 0) {
-                $meta_key = 'rwhtwp';   // Replace with your meta key
-                $meta_value = 'your_meta_value'; // Replace with your meta value
+            set_featured_image($post_id, $image);
 
-                // Add the meta field
+            if ($post_id !== 0) {
+                $meta_key = 'rwhtwp';
+                $meta_value = 'your_meta_value';
+
                 add_post_meta($post_id, $meta_key, $meta_value, true);
             }
 
         }
     }
 }
+
+// Set the featured image for a post
+function set_featured_image($post_id, $image_url) {
+    // Check if the post ID is valid
+    if (!$post_id || !get_post($post_id)) {
+        return;
+    }
+
+    // Check if the image URL is valid
+    if (!$image_url) {
+        return;
+    }
+
+    // Upload the image and get the attachment ID
+    $upload_dir = wp_upload_dir();
+    $image_data = file_get_contents($image_url);
+    $filename = basename($image_url);
+    if (wp_mkdir_p($upload_dir['path'])) {
+        $file = $upload_dir['path'] . '/' . $filename;
+    } else {
+        $file = $upload_dir['basedir'] . '/' . $filename;
+    }
+    file_put_contents($file, $image_data);
+    $wp_filetype = wp_check_filetype($filename, null);
+    $attachment = array(
+        'post_mime_type' => $wp_filetype['type'],
+        'post_title'     => sanitize_file_name($filename),
+        'post_content'   => '',
+        'post_status'    => 'inherit'
+    );
+    $attachment_id = wp_insert_attachment($attachment, $file, $post_id);
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    $attachment_data = wp_generate_attachment_metadata($attachment_id, $file);
+    wp_update_attachment_metadata($attachment_id, $attachment_data);
+
+    // Set the attachment as the featured image
+    set_post_thumbnail($post_id, $attachment_id);
+}
+
 
 /**
  * @param WP_Error|array $response
@@ -352,4 +390,11 @@ if (!wp_next_scheduled('update_readwise_highlights')) {
     wp_schedule_event(time(), 'hourly', 'update_readwise_highlights');
 }
 add_action('update_readwise_highlights', 'update_readwise_highlights');
+
+function rwhtwp_enqueue_styles() {
+    wp_enqueue_style('rwhtwp-styles', plugin_dir_url(__FILE__) . 'css/readwise-highlights-to-wordpress.css');
+}
+
+add_action('wp_enqueue_scripts', 'rwhtwp_enqueue_styles');
+
 ?>

@@ -1,0 +1,19 @@
+.tag-readwise .entry-content {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.tag-readwise.has-post-thumbnail .thumbnail {
+    height: 99px;
+    float: right;
+    width: 25%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.tag-readwise.has-post-thumbnail .entry-content p:nth-child(n+2) {
+    float: left;
+    width: 74%;
+}
